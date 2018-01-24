@@ -5,9 +5,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include "bserver.h"
-
+#include "butterfly_proto.h"
+#include "butterfly_serveur.h"
 
 
 /**
@@ -56,7 +58,7 @@ struct addrinfo* bs_check_ipaddress_to_use(bserver *bs,
 int serveur_tcp (bserver *bs)
 {
     
-	int err;
+	int err, autorisation = 1;
 	int sock_serveur;
 	int sock_connectee;
 	struct addrinfo  hints;
@@ -75,7 +77,7 @@ int serveur_tcp (bserver *bs)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family     = AF_INET;
 	hints.ai_socktype   = SOCK_STREAM;
-	hints.ai_flags      = AI_PASSIVE | AI_NUMERICSERV;
+	hints.ai_flags      = AI_PASSIVE;
 	
 	if ((err = getaddrinfo(bs->ip, bs->port,  &hints, &results)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
@@ -83,6 +85,8 @@ int serveur_tcp (bserver *bs)
 		return -1;
 	}
     
+    setsockopt(sock_serveur, SOL_SOCKET, SO_REUSEADDR, &autorisation,
+    	sizeof(int));
 	err = bind(sock_serveur, results->ai_addr, results->ai_addrlen);
 	freeaddrinfo(results);
 	
@@ -135,8 +139,11 @@ void traite_connexion (int sock)
 	socklen_t length = 0;
 	char hostname [NI_MAXHOST];
 	char servname [NI_MAXSERV];
-
-
+	unsigned char buffer[8192];
+	size_t nb_read;
+	s_bproto_header *bp_h;
+	
+	
 	getpeername(sock, NULL, &length);
 	if (length == 0)
 		return;
@@ -146,27 +153,31 @@ void traite_connexion (int sock)
 		free(sockaddr);
 		return;
 	}
-	if (getnameinfo(sockaddr, length,
+	getnameinfo(sockaddr, length,
 	                hostname, NI_MAXHOST,
 	                servname, NI_MAXSERV,
-	                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-        fprintf(stderr,"Nouveau client: %s:%s\n", hostname, servname);
-	}
+	                NI_NUMERICHOST | NI_NUMERICSERV);
+	
+	nb_read = read(sock, buffer, 8192);
+	bp_h = string_to_bproto_header(buffer, nb_read);
+	bproto_header_print(bp_h);
+	bproto_header_free(&bp_h);
 	
 	free(sockaddr);
 	close(sock);
+	
 }
 
 
-/*
+
 int main(){
     bserver *bs = NULL;
     
     bs = bserver_init();
     if(!bs) exit(1);
     
-    bs->port = strndup("8080",4);
-    bs->ip = strndup("127.0.0.1", 7);
+    bs->port = strndup("2018",4);
+    bs->ip = strndup("127.0.0.1", 9);
     serveur_tcp(bs);
     exit(0);
-}*/
+}

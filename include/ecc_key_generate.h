@@ -3,6 +3,6 @@
 
 #define ECCTYPE    "secp521r1"
 
-int ecc_key_generate(bdevice *bd, int number);
+int ecc_key_generate(t_bdevice *bd, int number);
 
 #endif

@@ -3,28 +3,14 @@
 
 
 #include <netdb.h>
+#include <sqlite3.h> 
 
 
-#define F1 0
-#define F2 1
-#define PUBLIC 0
-#define PRIVATE 1
 
-#define LG_BUFFER	1024
+typedef struct s_butterfly_device t_bdevice;
 
-typedef struct BUTTERFLY_DEVICE bdevice;
 
-struct BUTTERFLY_DEVICE {
-    /** 
-     * clé AES de 128 bytes pour le chiffrement
-     */ 
-    unsigned char   ek[128];
-    
-    /** 
-     * clé AES de 128 bits pour la signature
-     */ 
-    unsigned char   ck[128];
-    
+struct s_butterfly_device {
     /**
      * Fichiers d'enregistrement des clés ECC 
      */
@@ -34,31 +20,30 @@ struct BUTTERFLY_DEVICE {
     char            *f2_private_key_filename;
     
     /**
-     * Variables contenant les différentes clées
-     */
-    char            *f1_public_key;
-    char            *f1_private_key;
-    char            *f2_public_key;
-    char            *f2_private_key;
-    
-    /**
      * Variables de connection au serveur de clés
      */
     char            *srv_ip;
     char            *srv_port;    
+    
+    sqlite3         *db;
 };
 
-bdevice* bdevice_init();
-void bdevice_destroy(bdevice **d);
-int bdevice_create_aes_keys(bdevice *bd);
-int bdevice_create_ecc_keys(bdevice *bd);
 
-int bdevice_erase_files(bdevice *bd);
+t_bdevice* bdevice_init();
+int bdevice_init_database(t_bdevice *bd);
+void bdevice_destroy(t_bdevice **d);
+int bdevice_create_aes_keys(t_bdevice *bd);
+int bdevice_create_ecc_keys(t_bdevice *bd);
 
-char * bdevice_get_filename(bdevice *bd, int type, int number);
-char ** bdevice_get_ecc_key(bdevice *bd, int type, int number);
+int bdevice_erase_files(t_bdevice *bd);
 
-int bdevice_connect_to_server (bdevice *bd);
-int bdevice_build_addrinfo(bdevice *bd, struct addrinfo **results);
+char * bdevice_get_filename(t_bdevice *bd, int type, int number);
+int bdevice_get_ecc_key(t_bdevice *bd, int type, int number, 
+				unsigned char **return_char);
+
+
+int bdevice_connect_to_server(t_bdevice *bd);
+int bdevice_send_cert_query_to_server(t_bdevice *bd, int socket);
+int bdevice_build_addrinfo(t_bdevice *bd, struct addrinfo **results);
 
 #endif
